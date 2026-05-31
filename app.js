@@ -55,6 +55,7 @@ const pNum = (v) => { const x = parseFloat(String(v).replace(',', '.')); return 
 let route = 'home';
 let expandedId = null;
 let reportTab = 'generale';
+let reportPeriod = 'all';
 let settings = getSettings();
 
 applyTheme();
@@ -73,6 +74,28 @@ function activeVehicle() {
 function activeEntries() {
   const v = activeVehicle();
   return v ? Store.entriesFor(v.id) : [];
+}
+
+// Filtra i movimenti per il periodo selezionato nel Report
+function entriesInPeriod(entries, period) {
+  if (!period || period === 'all') return entries;
+  const now = new Date();
+  if (period === 'ytd') { const s = new Date(now.getFullYear(), 0, 1); return entries.filter((e) => new Date(e.date) >= s); }
+  if (period === '12m') { const s = new Date(now.getTime() - 365 * 86400000); return entries.filter((e) => new Date(e.date) >= s); }
+  const y = parseInt(period, 10);
+  if (!isNaN(y)) return entries.filter((e) => new Date(e.date).getFullYear() === y);
+  return entries;
+}
+function periodLabel(period) {
+  if (period === 'all') return 'Tutto';
+  if (period === 'ytd') return "Quest'anno";
+  if (period === '12m') return 'Ultimi 12 mesi';
+  return period;
+}
+function periodSelectHTML() {
+  const years = [...new Set(activeEntries().map((e) => new Date(e.date).getFullYear()))].sort((a, b) => b - a);
+  const opts = [['all', 'Tutto'], ['ytd', "Quest'anno"], ['12m', 'Ultimi 12 mesi'], ...years.map((y) => [String(y), String(y)])];
+  return `<select class="period-sel" id="period-select" aria-label="Periodo">${opts.map(([v, l]) => `<option value="${v}" ${reportPeriod === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
 }
 
 function applyTheme() {
@@ -144,7 +167,7 @@ function render() {
         <h1 style="margin-left:10px">Drivy</h1>
         <button class="icon-btn" data-act="toggle-theme" title="Tema">${icon('dark')}</button></div>`
     : `<div class="appbar" id="appbar"><h1>${titles[route]}</h1>
-        ${route==='report'?`<button class="icon-btn" data-act="toggle-theme">${icon('dark')}</button>`:''}</div>`;
+        ${route==='report'?periodSelectHTML():''}</div>`;
 
   app().innerHTML = `${appbar}<div class="view view-enter" id="view">${body}</div>
     ${showFab ? `<button class="fab" data-act="add">${icon('add')} Aggiungi</button>` : ''}
@@ -195,9 +218,8 @@ function viewHome() {
   const monthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   const monthSpend = entries.filter((e)=>{const d=new Date(e.date);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`===monthKey;}).reduce((a,e)=>a+(e.cost||0),0);
 
-  const lastFuel = entries.filter((e)=>e.type==='fuel' && e.odometer>0).sort((a,b)=>b.odometer-a.odometer)[0];
-  const kmSinceFuel = lastFuel ? Math.max(0, sum.lastOdo - lastFuel.odometer) : 0;
-  const lastPrice = (entries.filter((e)=>e.type==='fuel'&&e.pricePerLiter>0).sort((a,b)=>a.date<b.date?1:-1)[0]||{}).pricePerLiter || 0;
+  const yearNum = now.getFullYear();
+  const yearSpend = entries.filter((e)=>new Date(e.date).getFullYear()===yearNum).reduce((a,e)=>a+(e.cost||0),0);
 
   const multi = Store.vehicles().length > 1;
 
@@ -229,8 +251,8 @@ function viewHome() {
       <div class="val">${eur0(monthSpend)}</div><div class="sub2">${monthLabel(now.toISOString())}</div></div>
     <div class="stat tile-tert"><div class="lab"><span class="d">${icon('route')}</span>Costo / km</div>
       <div class="val">${eur(sum.costPerKm,3)}</div><div class="sub2">${km(sum.distance)} totali</div></div>
-    <div class="stat tile-maint"><div class="lab"><span class="d">${icon('fuel')}</span>Ultimo pieno</div>
-      <div class="val">${numf(kmSinceFuel)} <small>km fa</small></div><div class="sub2">${lastPrice?eur(lastPrice,3)+'/L':''}</div></div>
+    <div class="stat tile-maint"><div class="lab"><span class="d">${icon('euro')}</span>Quest'anno</div>
+      <div class="val">${eur0(yearSpend)}</div><div class="sub2">anno ${yearNum}</div></div>
   </div>`;
 
   return hero + predBanner + stats + timelineHTML(entries, v);
@@ -279,8 +301,8 @@ function entryHTML(e) {
    ============================================================ */
 function viewReport() {
   const v = activeVehicle();
-  const entries = activeEntries();
-  const sum = S.summary(entries, v);
+  const entries = entriesInPeriod(activeEntries(), reportPeriod);
+  const sum = S.summary(entries, reportPeriod==='all' ? v : null);
   const fuelE = entries.filter((e)=>e.type==='fuel');
   const life = S.lifetimeConsumption(fuelE);
   const recent = S.avgOfLast(S.consumptionSeries(fuelE), 5);
@@ -362,26 +384,27 @@ function donutLegend(label, color, value, total) {
     <span class="muted" style="font-size:12px;font-weight:700;width:38px;text-align:right">${pct}%</span></div>`;
 }
 function drawReportCharts() {
-  const entries = activeEntries();
+  const entries = entriesInPeriod(activeEntries(), reportPeriod);
   const fuelE = entries.filter((e)=>e.type==='fuel');
+  const cv = (n)=>getComputedStyle(document.body).getPropertyValue(n).trim();
   if (reportTab === 'generale') {
     Charts.monthlyBars('ch-monthly', S.monthly(entries));
-    const sum = S.summary(entries, activeVehicle());
+    const sum = S.summary(entries, reportPeriod==='all'?activeVehicle():null);
     Charts.donut('ch-donut', [
-      { label:'Rifornimento', value:sum.fuelCost, color:getComputedStyle(document.body).getPropertyValue('--fuel').trim() },
-      { label:'Manutenzione', value:sum.maintCost, color:getComputedStyle(document.body).getPropertyValue('--maint').trim() },
+      { label:'Rifornimento', value:sum.fuelCost, color:cv('--fuel') },
+      { label:'Manutenzione', value:sum.maintCost, color:cv('--maint') },
     ]);
     const odo = S.odometerSeries(entries);
-    Charts.line('ch-odo', odo.map((p)=>({ x:dShort(p.date), y:p.odometer })),
-      { color:getComputedStyle(document.body).getPropertyValue('--primary').trim(), yFmt:(v)=>numf(v/1000)+'k', tipFmt:(v)=>km(v) });
+    Charts.timeLine('ch-odo', odo.map((p)=>({ x:+new Date(p.date), y:p.odometer })),
+      { color:cv('--primary'), yFmt:(v)=>numf(v/1000)+'k', tipFmt:(v)=>km(v) });
   } else if (reportTab === 'rifornimento') {
     const series = S.consumptionSeries(fuelE);
     const unit = settings.consumptionUnit;
-    Charts.line('ch-cons', series.map((p)=>({ x:dShort(p.date), y: unit==='l100'?p.l100:p.kml })),
-      { color:getComputedStyle(document.body).getPropertyValue('--fuel').trim(), tipFmt:(v)=>numf(v,1)+(unit==='l100'?' L/100km':' km/L') });
+    Charts.timeLine('ch-cons', series.map((p)=>({ x:+new Date(p.date), y: unit==='l100'?p.l100:p.kml })),
+      { color:cv('--fuel'), tipFmt:(v)=>numf(v,1)+(unit==='l100'?' L/100km':' km/L') });
     const prices = S.priceSeries(fuelE);
-    Charts.line('ch-price', prices.map((p)=>({ x:dShort(p.date), y:p.price })),
-      { color:getComputedStyle(document.body).getPropertyValue('--tertiary').trim(), tipFmt:(v)=>eur(v,3)+'/L' });
+    Charts.timeLine('ch-price', prices.map((p)=>({ x:+new Date(p.date), y:p.price })),
+      { color:cv('--tertiary'), tipFmt:(v)=>eur(v,3)+'/L' });
   }
 }
 
@@ -463,9 +486,9 @@ function openFuelForm(existing) {
       <div class="field"><label>Contachilometri (km)</label><input class="input" inputmode="numeric" id="f-odo" placeholder="${numf(lastOdo)}" value="${e.odometer||''}">
         <div class="hint">Ultima lettura: ${km(lastOdo)}</div></div>
       <div class="row3">
-        <div class="field"><label>Prezzo / L</label><input class="input" inputmode="decimal" id="f-price" value="${e.pricePerLiter||''}"></div>
         <div class="field"><label>Costo totale €</label><input class="input" inputmode="decimal" id="f-cost" value="${e.cost||''}"></div>
         <div class="field"><label>Litri</label><input class="input" inputmode="decimal" id="f-liters" value="${e.liters||''}"></div>
+        <div class="field"><label>Prezzo / L</label><input class="input" inputmode="decimal" id="f-price" value="${e.pricePerLiter||''}" placeholder="auto"></div>
       </div>
       <div class="calc-hint" id="f-calc"></div>
       <div class="switch-row"><span class="sl">Pieno?</span><div class="tgl ${e.fullTank!==false?'on':''}" id="f-full"></div></div>
@@ -474,17 +497,16 @@ function openFuelForm(existing) {
       <button class="btn filled full" type="submit" style="padding:15px;margin-top:6px">${icon('check')} Salva</button>
     </form>`, (sh) => {
     const price=$('#f-price',sh), cost=$('#f-cost',sh), liters=$('#f-liters',sh), full=$('#f-full',sh), calc=$('#f-calc',sh);
-    let lastEdited = 'price';
+    // Flusso principale: Costo + Litri -> Prezzo/L (auto). Resta comunque bidirezionale.
     const upd = (src) => {
-      lastEdited = src;
       const p=pNum(price.value), c=pNum(cost.value), l=pNum(liters.value);
-      if (src!=='cost' && p>0 && l>0) cost.value = (p*l).toFixed(2);
-      else if (src==='cost' && c>0 && l>0) price.value = (c/l).toFixed(3);
-      else if (src==='cost' && c>0 && p>0) liters.value = (c/p).toFixed(2);
+      if (src==='cost') { if (l>0) price.value=(c/l).toFixed(3); else if (p>0) liters.value=(c/p).toFixed(2); }
+      else if (src==='liters') { if (c>0) price.value=(l>0?(c/l).toFixed(3):''); else if (p>0) cost.value=(p*l).toFixed(2); }
+      else if (src==='price') { if (l>0) cost.value=(p*l).toFixed(2); else if (c>0) liters.value=(p>0?(c/p).toFixed(2):''); }
       const pp=pNum(price.value), ll=pNum(liters.value), cc=pNum(cost.value);
-      calc.textContent = (pp&&ll)?`${numf(ll,2)} L × ${eur(pp,3)} = ${eur(cc)}`:'';
+      calc.textContent = (cc&&ll)?`${numf(ll,2)} L × ${eur(pp,3)} = ${eur(cc)}`:'';
     };
-    price.oninput=()=>upd('price'); liters.oninput=()=>upd('liters'); cost.oninput=()=>upd('cost'); upd('price');
+    price.oninput=()=>upd('price'); liters.oninput=()=>upd('liters'); cost.oninput=()=>upd('cost'); upd('cost');
     full.onclick=()=>full.classList.toggle('on');
     $('#form-fuel',sh).onsubmit = async (ev) => {
       ev.preventDefault();
@@ -720,6 +742,11 @@ document.addEventListener('click', async (ev) => {
   if (act==='export-json') return exportJSON();
   if (act==='import-csv') return importCsv();
   if (act==='pick-photo') { /* gestito nel form */ }
+});
+
+document.addEventListener('change', (ev) => {
+  const sel = ev.target.closest('#period-select');
+  if (sel) { reportPeriod = sel.value; render(); }
 });
 
 /* ============================================================

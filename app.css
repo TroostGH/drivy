@@ -297,3 +297,11 @@ button{font-family:inherit}
 .btn svg{width:18px;height:18px;flex-shrink:0}
 .hero .vodo svg{width:22px;height:22px;align-self:center}
 .menu-item>svg,.list-row>svg{width:22px;height:22px;flex-shrink:0;color:var(--on-surface-variant)}
+
+/* Selettore periodo nel Report */
+.period-sel{appearance:none;-webkit-appearance:none;background-color:var(--surface-container-high);color:var(--on-surface);
+  border:none;border-radius:100px;padding:9px 32px 9px 15px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;max-width:170px;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='%23999'><path d='M7 10l5 5 5-5z'/></svg>");
+  background-repeat:no-repeat;background-position:right 7px center}
+.period-sel:focus{outline:2px solid var(--primary);outline-offset:1px}
+.period-sel option{background:var(--surface-container-high);color:var(--on-surface);font-weight:600}
