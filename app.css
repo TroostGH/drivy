@@ -292,3 +292,8 @@ button{font-family:inherit}
 .spinner{width:34px;height:34px;border:3px solid var(--outline-variant);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;margin:60px auto}
 @keyframes spin{to{transform:rotate(360deg)}}
 .badge-soft{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:7px;background:var(--tertiary-container);color:var(--on-tertiary-container)}
+
+/* Dimensioni icone non altrimenti vincolate */
+.btn svg{width:18px;height:18px;flex-shrink:0}
+.hero .vodo svg{width:22px;height:22px;align-self:center}
+.menu-item>svg,.list-row>svg{width:22px;height:22px;flex-shrink:0;color:var(--on-surface-variant)}
