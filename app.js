@@ -56,6 +56,7 @@ let route = 'home';
 let expandedId = null;
 let reportTab = 'generale';
 let reportPeriod = 'all';
+let reportFrom = null, reportTo = null;
 let settings = getSettings();
 
 applyTheme();
@@ -82,9 +83,19 @@ function entriesInPeriod(entries, period) {
   const now = new Date();
   if (period === 'ytd') { const s = new Date(now.getFullYear(), 0, 1); return entries.filter((e) => new Date(e.date) >= s); }
   if (period === '12m') { const s = new Date(now.getTime() - 365 * 86400000); return entries.filter((e) => new Date(e.date) >= s); }
+  if (period === 'custom') {
+    const f = reportFrom ? new Date(reportFrom + 'T00:00:00') : null;
+    const t = reportTo ? new Date(reportTo + 'T23:59:59') : null;
+    return entries.filter((e) => { const d = new Date(e.date); return (!f || d >= f) && (!t || d <= t); });
+  }
   const y = parseInt(period, 10);
   if (!isNaN(y)) return entries.filter((e) => new Date(e.date).getFullYear() === y);
   return entries;
+}
+const isoDate = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+function defaultRange() {
+  const n = new Date();
+  return { from: isoDate(new Date(n.getFullYear(), n.getMonth(), 1)), to: isoDate(new Date(n.getFullYear(), n.getMonth()+1, 0)) };
 }
 function periodLabel(period) {
   if (period === 'all') return 'Tutto';
@@ -94,7 +105,7 @@ function periodLabel(period) {
 }
 function periodSelectHTML() {
   const years = [...new Set(activeEntries().map((e) => new Date(e.date).getFullYear()))].sort((a, b) => b - a);
-  const opts = [['all', 'Tutto'], ['ytd', "Quest'anno"], ['12m', 'Ultimi 12 mesi'], ...years.map((y) => [String(y), String(y)])];
+  const opts = [['all', 'Tutto'], ['ytd', "Quest'anno"], ['12m', 'Ultimi 12 mesi'], ['custom', 'Personalizzato…'], ...years.map((y) => [String(y), String(y)])];
   return `<select class="period-sel" id="period-select" aria-label="Periodo">${opts.map(([v, l]) => `<option value="${v}" ${reportPeriod === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
 }
 
@@ -373,7 +384,20 @@ function viewReport() {
       </div>`).join('')}
     </div>`;
   }
-  return tabsHTML + content;
+  let rangeBar = '';
+  if (reportPeriod === 'custom') {
+    rangeBar = `<div class="range-bar">
+      <div class="rb-dates">
+        <label>Da<input type="date" class="input" id="range-from" value="${reportFrom||''}"></label>
+        <label>A<input type="date" class="input" id="range-to" value="${reportTo||''}"></label>
+      </div>
+      <div class="rb-quick">
+        <button type="button" class="fchip" data-act="range-this-month">Questo mese</button>
+        <button type="button" class="fchip" data-act="range-last-month">Mese scorso</button>
+      </div>
+    </div>`;
+  }
+  return tabsHTML + rangeBar + content;
 }
 function donutLegend(label, color, value, total) {
   const pct = total>0 ? Math.round(value/total*100) : 0;
@@ -739,6 +763,8 @@ document.addEventListener('click', async (ev) => {
     if (ok) { await Store.deleteEntry(id); expandedId=null; snack('Movimento eliminato'); }
     return;
   }
+  if (act==='range-this-month') { const n=new Date(); reportFrom=isoDate(new Date(n.getFullYear(),n.getMonth(),1)); reportTo=isoDate(new Date(n.getFullYear(),n.getMonth()+1,0)); render(); return; }
+  if (act==='range-last-month') { const n=new Date(); reportFrom=isoDate(new Date(n.getFullYear(),n.getMonth()-1,1)); reportTo=isoDate(new Date(n.getFullYear(),n.getMonth(),0)); render(); return; }
   if (act==='export-json') return exportJSON();
   if (act==='import-csv') return importCsv();
   if (act==='pick-photo') { /* gestito nel form */ }
@@ -746,7 +772,13 @@ document.addEventListener('click', async (ev) => {
 
 document.addEventListener('change', (ev) => {
   const sel = ev.target.closest('#period-select');
-  if (sel) { reportPeriod = sel.value; render(); }
+  if (sel) {
+    reportPeriod = sel.value;
+    if (reportPeriod === 'custom' && (!reportFrom || !reportTo)) { const r = defaultRange(); reportFrom = r.from; reportTo = r.to; }
+    render(); return;
+  }
+  const fromI = ev.target.closest('#range-from'); if (fromI) { reportFrom = fromI.value; render(); return; }
+  const toI = ev.target.closest('#range-to'); if (toI) { reportTo = toI.value; render(); return; }
 });
 
 /* ============================================================
