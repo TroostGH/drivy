@@ -1,0 +1,17 @@
+{
+  "name": "Drivy — Monitoraggio auto",
+  "short_name": "Drivy",
+  "description": "Monitora consumi, costi e manutenzione della tua auto.",
+  "lang": "it",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#121318",
+  "theme_color": "#2952E3",
+  "categories": ["productivity", "utilities", "finance"],
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

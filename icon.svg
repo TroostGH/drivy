@@ -1,0 +1,16 @@
+<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Drivy">
+  <defs>
+    <linearGradient id="dg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFA62B"/>
+      <stop offset="1" stop-color="#F2641B"/>
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="26" fill="url(#dg)"/>
+  <polygon points="32,52 54,52 62,64 26,64" fill="#fff"/>
+  <rect x="16" y="62" width="72" height="16" rx="8" fill="#fff"/>
+  <polygon points="35,55 51,55 57,63 29,63" fill="#7a3a08" opacity="0.2"/>
+  <circle cx="33" cy="79" r="9" fill="#0B1733"/><circle cx="33" cy="79" r="3.8" fill="#fff"/>
+  <circle cx="72" cy="79" r="9" fill="#0B1733"/><circle cx="72" cy="79" r="3.8" fill="#fff"/>
+  <circle cx="88" cy="40" r="19" fill="#fff"/>
+  <g transform="translate(76,28)" fill="#F2641B"><path d="M15 18.5c-2.51 0-4.68-1.42-5.76-3.5H15v-2H8.58c-.05-.33-.08-.66-.08-1s.03-.67.08-1H15V9H9.24C10.32 6.92 12.5 5.5 15 5.5c1.61 0 3.09.59 4.23 1.57L21 5.3C19.41 3.87 17.3 3 15 3c-3.92 0-7.24 2.51-8.48 6H3v2h3.06c-.04.33-.06.66-.06 1s.02.67.06 1H3v2h3.52c1.24 3.49 4.56 6 8.48 6 2.31 0 4.41-.87 6-2.3l-1.78-1.77c-1.13.98-2.6 1.57-4.22 1.57z"/></g>
+</svg>
