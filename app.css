@@ -217,6 +217,21 @@ button{font-family:inherit}
 .maint-row:hover{background:var(--surface-container-low)}
 .maint-row:active{background:var(--surface-container-high)}
 .maint-row .chv{width:18px;height:18px;opacity:.45;flex-shrink:0}
+.hero-carousel{margin-bottom:16px}
+.hero-track{position:relative;display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.hero-track::-webkit-scrollbar{display:none}
+.hero-track .hero{flex:0 0 100%;scroll-snap-align:start;margin-bottom:0}
+.hero-dots{display:flex;justify-content:center;gap:6px;margin-top:10px}
+.hero-dots .dot{width:7px;height:7px;border-radius:999px;background:var(--outline-variant);transition:width .2s,background .2s}
+.hero-dots .dot.on{background:var(--primary);width:18px}
+.report-veh{display:flex;align-items:center;gap:7px;font-weight:700;font-size:14px;margin:0 2px 14px;color:var(--on-surface-variant)}
+.report-veh svg{width:18px;height:18px}
+.toggle{position:relative;display:inline-block;width:46px;height:28px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0;position:absolute}
+.toggle .track{position:absolute;inset:0;border-radius:999px;background:var(--outline-variant);transition:background .2s;cursor:pointer}
+.toggle .track::before{content:"";position:absolute;width:22px;height:22px;border-radius:50%;background:#fff;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.toggle input:checked + .track{background:var(--primary)}
+.toggle input:checked + .track::before{transform:translateX(18px)}
 
 /* ---------- Chips / segmented ---------- */
 .seg{display:inline-flex;background:var(--surface-container);border-radius:100px;padding:4px;gap:4px;margin-bottom:14px}

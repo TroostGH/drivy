@@ -65,11 +65,15 @@ applyTheme();
 const $ = (s, r=document) => r.querySelector(s);
 const app = () => document.getElementById('app');
 
+const isActive = (v) => !!v && v.active !== false;
+function activeVehicles() { return Store.vehicles().filter(isActive); }
 function activeVehicle() {
   const vs = Store.vehicles();
   if (!vs.length) return null;
-  let v = vs.find((x) => x.id === settings.activeVehicleId);
-  if (!v) { v = vs[0]; settings = saveSettings({ activeVehicleId: v.id }); }
+  const pool = vs.filter(isActive);
+  const list = pool.length ? pool : vs;
+  let v = list.find((x) => x.id === settings.activeVehicleId);
+  if (!v) { v = list[0]; settings = saveSettings({ activeVehicleId: v.id }); }
   return v;
 }
 function activeEntries() {
@@ -164,7 +168,7 @@ function confirmSheet(title, msg, danger=true) {
 function render() {
   const vehicles = Store.vehicles();
   const titles = { home:'Drivy', report:'Report', garage:'Garage', settings:'Impostazioni' };
-  const showFab = (route === 'home' || route === 'report') && vehicles.length > 0;
+  const showFab = (route === 'home' || route === 'report') && activeVehicles().length > 0;
 
   let body = '';
   if (!vehicles.length && route !== 'garage' && route !== 'settings') body = viewNoVehicle();
@@ -189,8 +193,9 @@ function render() {
       ${navItem('settings','settings','Impostazioni')}
     </div></nav>`;
 
-  // charts dopo il mount
+  // charts / carosello dopo il mount
   if (route === 'report') requestAnimationFrame(drawReportCharts);
+  if (route === 'home') requestAnimationFrame(initHomeCarousel);
   // scroll shadow appbar
   const view = $('#view');
   const bar = $('#appbar');
@@ -216,34 +221,53 @@ function viewNoVehicle() {
    VIEW: HOME / Storico
    ============================================================ */
 function viewHome() {
-  const v = activeVehicle();
-  const entries = activeEntries();
+  const actives = activeVehicles();
+  if (!actives.length) {
+    return `<div class="empty" style="margin-top:40px">${icon('car')}
+      <p>Nessun veicolo attivo</p>
+      <p class="muted" style="font-weight:500;margin-top:-6px">Attiva un veicolo dal Garage per vederne storico e report.</p>
+      <button class="btn filled" data-nav="garage" style="margin-top:16px">${icon('car')} Vai al Garage</button></div>`;
+  }
+  let v = actives.find((x)=>x.id===settings.activeVehicleId);
+  if (!v) { v = actives[0]; settings = saveSettings({ activeVehicleId: v.id }); }
+  const idx = actives.findIndex((x)=>x.id===v.id);
+
+  let top;
+  if (actives.length > 1) {
+    top = `<div class="hero-carousel">
+      <div class="hero-track" id="hero-track">${actives.map((veh)=>heroCardHTML(veh)).join('')}</div>
+      <div class="hero-dots" id="hero-dots">${actives.map((_,i)=>`<span class="dot ${i===idx?'on':''}"></span>`).join('')}</div>
+    </div>`;
+  } else {
+    top = heroCardHTML(v);
+  }
+  return top + `<div id="home-details">${homeDetailsHTML(v)}</div>`;
+}
+function heroCardHTML(v) {
+  const sum = S.summary(Store.entriesFor(v.id), v);
+  return `<div class="hero">
+    ${v.photo ? `<img class="photo" src="${v.photo}" alt="" onerror="this.style.display='none'">` : ''}
+    <div class="grad"></div>
+    ${v.plate ? `<span class="badge">${v.plate}</span>` : ''}
+    <div class="content">
+      <p class="vname">${v.name||'Auto'}</p>
+      <p class="vmodel">${v.model||''} ${v.fuelType?'· '+v.fuelType:''}</p>
+      <div class="vodo">${icon('speed')}<b>${numf(sum.lastOdo)}</b><span>km</span></div>
+    </div></div>`;
+}
+function homeDetailsHTML(v) {
+  const entries = Store.entriesFor(v.id);
   const sum = S.summary(entries, v);
   const life = S.lifetimeConsumption(entries.filter((e)=>e.type==='fuel'));
   const pred = S.nextRefuel(entries.filter((e)=>e.type==='fuel'));
   const unit = settings.consumptionUnit;
   const consVal = unit === 'l100' ? `${numf(life.l100,1)} <small>L/100km</small>` : `${numf(life.kml,1)} <small>km/L</small>`;
 
-  // spesa mese corrente
   const now = new Date();
   const monthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   const monthSpend = entries.filter((e)=>{const d=new Date(e.date);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`===monthKey;}).reduce((a,e)=>a+(e.cost||0),0);
-
   const yearNum = now.getFullYear();
   const yearSpend = entries.filter((e)=>new Date(e.date).getFullYear()===yearNum).reduce((a,e)=>a+(e.cost||0),0);
-
-  const multi = Store.vehicles().length > 1;
-
-  let hero = `<div class="hero">
-    ${v.photo ? `<img class="photo" src="${v.photo}" alt="" onerror="this.style.display='none'">` : ''}
-    <div class="grad"></div>
-    ${v.plate ? `<span class="badge">${v.plate}</span>` : ''}
-    ${multi ? `<button class="switch" data-act="switch-vehicle">${icon('swap')} Cambia</button>` : ''}
-    <div class="content">
-      <p class="vname">${v.name||'Auto'}</p>
-      <p class="vmodel">${v.model||''} ${v.fuelType?'· '+v.fuelType:''}</p>
-      <div class="vodo">${icon('speed')}<b>${numf(sum.lastOdo)}</b><span>km</span></div>
-    </div></div>`;
 
   let predBanner = '';
   if (pred) {
@@ -266,7 +290,45 @@ function viewHome() {
       <div class="val">${eur0(yearSpend)}</div><div class="sub2">anno ${yearNum}</div></div>
   </div>`;
 
-  return hero + predBanner + stats + timelineHTML(entries, v);
+  return predBanner + stats + timelineHTML(entries, v);
+}
+function currentSlideIndex(track) {
+  const c = track.scrollLeft + track.clientWidth/2;
+  let best=0, bestD=Infinity;
+  for (let i=0;i<track.children.length;i++){
+    const el = track.children[i];
+    const center = el.offsetLeft + el.offsetWidth/2;
+    const d = Math.abs(center - c);
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  return best;
+}
+function initHomeCarousel() {
+  const track = document.getElementById('hero-track');
+  if (!track) return;
+  const actives = activeVehicles();
+  let idx = actives.findIndex((x)=>x.id===settings.activeVehicleId);
+  if (idx < 0) idx = 0;
+  const slide = track.children[idx];
+  if (slide) {
+    const prev = track.style.scrollBehavior; track.style.scrollBehavior = 'auto';
+    track.scrollLeft = slide.offsetLeft - (track.clientWidth - slide.offsetWidth)/2;
+    track.style.scrollBehavior = prev || '';
+  }
+  let t;
+  track.addEventListener('scroll', () => {
+    clearTimeout(t);
+    t = setTimeout(() => {
+      const i = currentSlideIndex(track);
+      const dots = document.getElementById('hero-dots');
+      if (dots) [...dots.children].forEach((d,j)=>d.classList.toggle('on', j===i));
+      const veh = actives[i];
+      if (!veh || veh.id === settings.activeVehicleId) return;
+      settings = saveSettings({ activeVehicleId: veh.id });
+      const det = document.getElementById('home-details');
+      if (det) det.innerHTML = homeDetailsHTML(veh);
+    }, 90);
+  }, { passive: true });
 }
 
 function entryTitle(e) {
@@ -305,6 +367,45 @@ function entryHTML(e) {
       <button class="btn text" data-act="edit-entry" data-id="${e.id}">${icon('edit')} Modifica</button>
       <button class="btn text" data-act="del-entry" data-id="${e.id}" style="color:var(--error)">${icon('del')} Elimina</button>
     </div>` : ''}`;
+}
+function entryStaticHTML(e) {
+  const fuel = e.type === 'fuel';
+  const meta = [`<span class="m">${icon('speed')}${km(e.odometer)}</span>`];
+  if (fuel) {
+    if (e.liters) meta.push(`<span class="m">${icon('drop')}${numf(e.liters,2)} L</span>`);
+    if (e.station) meta.push(`<span class="m">${icon('place')}${e.station}</span>`);
+  } else if (e.note) {
+    meta.push(`<span class="m">${e.note}</span>`);
+  }
+  return `<div class="entry" style="cursor:default">
+    <div class="ic ${fuel?'ic-fuel':'ic-maint'}">${icon(fuel?'fuel':'build')}</div>
+    <div class="body">
+      <div class="r1"><span class="ttl">${entryTitle(e)}</span><span class="cost">${eur(e.cost)}</span></div>
+      <div class="r2">${meta.join('')}<span class="date" style="margin-left:auto">${dShort(e.date)}</span></div>
+    </div></div>`;
+}
+function openVehicleHistory(id) {
+  const v = Store.vehicles().find((x)=>x.id===id);
+  if (!v) return;
+  const entries = Store.entriesFor(id);
+  const sum = S.summary(entries, v);
+  const sorted = [...entries].sort((a,b)=>a.date<b.date?1:-1);
+  let tl;
+  if (!sorted.length) tl = `<div class="empty">${icon('list')}<p>Nessuna spesa registrata</p></div>`;
+  else {
+    let cur=''; tl = '<div class="tl">';
+    for (const e of sorted) {
+      const mk = monthLabel(e.date);
+      if (mk!==cur) { cur=mk; tl += `<div class="month-h">${mk}</div>`; }
+      tl += entryStaticHTML(e);
+    }
+    tl += '</div>';
+  }
+  const sub = [v.model, km(sum.lastOdo), eur0(sum.total)+' totali', sum.nTotal+' movimenti'].filter(Boolean).join(' · ');
+  openSheet(`
+    <h2 style="margin-bottom:2px">${v.name||'Auto'}${isActive(v)?'':' <span class="badge-soft" style="margin-left:4px">archiviata</span>'}</h2>
+    <div class="muted" style="margin:0 4px 14px;font-weight:600;font-size:13px">${sub}</div>
+    ${tl}`);
 }
 
 /* ============================================================
@@ -401,7 +502,9 @@ function viewReport() {
       </div>
     </div>`;
   }
-  return tabsHTML + rangeBar + content;
+  const vehLabel = activeVehicles().length > 1
+    ? `<div class="report-veh">${icon('car')}<span>${v.name||'Auto'}</span></div>` : '';
+  return tabsHTML + vehLabel + rangeBar + content;
 }
 function donutLegend(label, color, value, total) {
   const pct = total>0 ? Math.round(value/total*100) : 0;
@@ -461,12 +564,12 @@ function viewGarage() {
   let cards = vs.map((v) => {
     const en = Store.entriesFor(v.id);
     const sum = S.summary(en, v);
-    const active = v.id === settings.activeVehicleId;
-    return `<div class="card elev" data-act="select-vehicle" data-id="${v.id}" style="padding:0;overflow:hidden;cursor:pointer">
-      <div class="hero" style="margin:0;border-radius:0;min-height:150px">
+    const isAct = isActive(v);
+    return `<div class="card elev" data-act="${isAct?'select-vehicle':'view-vehicle'}" data-id="${v.id}" style="padding:0;overflow:hidden;cursor:pointer">
+      <div class="hero" style="margin:0;border-radius:0;min-height:150px${isAct?'':';opacity:.72'}">
         ${v.photo?`<img class="photo" src="${v.photo}" onerror="this.style.display='none'">`:''}
         <div class="grad"></div>
-        ${active?`<span class="badge" style="background:var(--primary);color:#fff">ATTIVA</span>`:''}
+        ${isAct?`<span class="badge" style="background:var(--primary);color:#fff">ATTIVA</span>`:`<span class="badge" style="background:rgba(20,20,24,.62);color:#fff">ARCHIVIATA</span>`}
         <button class="icon-btn" data-act="edit-vehicle" data-id="${v.id}" style="position:absolute;top:8px;right:8px;z-index:3;color:#fff;background:rgba(0,0,0,.35)">${icon('edit')}</button>
         <div class="content" style="min-height:150px">
           <p class="vname" style="font-size:20px">${v.name}</p>
@@ -646,6 +749,11 @@ function openVehicleForm(existing) {
         <div class="field"><label>Prezzo acquisto €</label><input class="input" inputmode="decimal" id="v-pprice" value="${e.purchasePrice||''}"></div>
       </div>
       <div class="field"><label>Km iniziali</label><input class="input" inputmode="numeric" id="v-odo" value="${e.initialOdometer||''}" placeholder="0"></div>
+      <div class="switch-row" style="margin-top:2px">
+        <div style="flex:1;min-width:0;padding-right:12px"><div class="sl">Veicolo attivo</div>
+          <div class="muted" style="font-size:12px;font-weight:500;line-height:1.3">Se disattivato resta nel Garage ma esce da Storico e Report</div></div>
+        <label class="toggle"><input type="checkbox" id="v-active" ${e.active!==false?'checked':''}><span class="track"></span></label>
+      </div>
       <button class="btn filled full" type="submit" style="padding:15px;margin-top:6px">${icon('check')} Salva</button>
       ${existing?`<button type="button" class="btn text full" data-act="del-vehicle" data-id="${existing.id}" style="color:var(--error);margin-top:8px">${icon('del')} Elimina veicolo</button>`:''}
     </form>`, (sh) => {
@@ -667,6 +775,7 @@ function openVehicleForm(existing) {
         purchasePrice: pNum($('#v-pprice',sh).value)||null,
         initialOdometer: pNum($('#v-odo',sh).value)||0,
         photo: photo.value||null,
+        active: $('#v-active',sh).checked,
       };
       if (existing) { await Store.updateVehicle(existing.id, rec); snack('Veicolo aggiornato'); }
       else { await Store.addVehicle(rec); const vs=Store.vehicles(); settings=saveSettings({activeVehicleId:vs[vs.length-1].id}); snack('Veicolo aggiunto'); }
@@ -772,6 +881,7 @@ document.addEventListener('click', async (ev) => {
     settings = saveSettings({ theme: order[ni] }); applyTheme(); render(); snack('Tema: '+order[ni]); return;
   }
   if (act==='select-vehicle') { settings=saveSettings({activeVehicleId:id}); closeSheet(); route='home'; render(); return; }
+  if (act==='view-vehicle') return openVehicleHistory(id);
   if (act==='edit-vehicle') { const v=Store.vehicles().find((x)=>x.id===(id||settings.activeVehicleId)); closeSheet(true); return openVehicleForm(v); }
   if (act==='del-vehicle') {
     const ok = await confirmSheet('Eliminare veicolo?', 'Verranno eliminati anche tutti i suoi movimenti. Operazione irreversibile.');
