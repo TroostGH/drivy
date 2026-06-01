@@ -340,9 +340,9 @@ function viewReport() {
       <div class="legend"><span><i style="background:var(--fuel)"></i>Rifornimento</span><span><i style="background:var(--maint)"></i>Manutenzione</span></div>
     </div>
     <div class="card elev"><div class="card-title"><span class="ti">${icon('euro')}</span>Ripartizione costi</div>
-      <div style="display:flex;align-items:center;gap:18px">
-        <div class="chart-wrap" style="width:150px;height:150px;flex-shrink:0"><canvas id="ch-donut"></canvas></div>
-        <div style="flex:1">
+      <div class="donut-row">
+        <div class="chart-wrap donut-c"><canvas id="ch-donut"></canvas></div>
+        <div class="donut-legend">
           ${donutLegend('Rifornimento','var(--fuel)',sum.fuelCost,sum.total)}
           ${donutLegend('Manutenzione','var(--maint)',sum.maintCost,sum.total)}
         </div>
@@ -402,10 +402,10 @@ function viewReport() {
 function donutLegend(label, color, value, total) {
   const pct = total>0 ? Math.round(value/total*100) : 0;
   return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0">
-    <i style="width:12px;height:12px;border-radius:4px;background:${color};display:inline-block"></i>
-    <span style="font-weight:700;font-size:14px;flex:1">${label}</span>
-    <span style="font-weight:800">${eur0(value)}</span>
-    <span class="muted" style="font-size:12px;font-weight:700;width:38px;text-align:right">${pct}%</span></div>`;
+    <i style="width:12px;height:12px;border-radius:4px;background:${color};display:inline-block;flex-shrink:0"></i>
+    <span style="font-weight:700;font-size:14px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</span>
+    <span style="font-weight:800;flex-shrink:0">${eur0(value)}</span>
+    <span class="muted" style="font-size:12px;font-weight:700;width:38px;text-align:right;flex-shrink:0">${pct}%</span></div>`;
 }
 function drawReportCharts() {
   const entries = entriesInPeriod(activeEntries(), reportPeriod);

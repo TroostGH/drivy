@@ -1,5 +1,5 @@
 // sw.js — Service worker di Drivy (PWA offline app-shell)
-const CACHE = 'drivy-v4';
+const CACHE = 'drivy-v5';
 const SHELL = [
   './', 'index.html', 'app.css', 'app.js', 'store.js', 'seed.js',
   'stats.js', 'charts.js', 'config.js', 'manifest.webmanifest',
