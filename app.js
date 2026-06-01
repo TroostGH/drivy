@@ -378,10 +378,14 @@ function viewReport() {
       <div class="stat tile-primary"><div class="lab"><span class="d">${icon('route')}</span>Costo / 1000km</div><div class="val">${eur(totM/Math.max(1,sum.distance)*1000,1)}</div><div class="sub2">solo manutenzione</div></div>
     </div>
     <div class="card elev"><div class="card-title"><span class="ti">${icon('tune')}</span>Per tipologia</div>
-      ${bd.map((b)=>`<div style="margin-bottom:12px">
-        <div style="display:flex;justify-content:space-between;font-size:13.5px;font-weight:700;margin-bottom:5px"><span>${b.subtype}</span><span>${eur0(b.cost)}</span></div>
+      ${bd.map((b)=>{
+        const cnt = maintE.filter((e)=>(e.subtype||'Altro')===b.subtype).length;
+        return `<div class="maint-row" data-act="maint-detail" data-sub="${b.subtype}">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:13.5px;font-weight:700;margin-bottom:5px">
+          <span>${b.subtype} <span class="muted" style="font-weight:600">· ${cnt}</span></span>
+          <span style="display:flex;align-items:center;gap:3px">${eur0(b.cost)}${icon('chev','chv')}</span></div>
         <div style="height:8px;border-radius:6px;background:var(--surface-container-high);overflow:hidden"><div style="height:100%;width:${Math.max(4,b.cost/maxC*100)}%;background:var(--maint);border-radius:6px"></div></div>
-      </div>`).join('')}
+      </div>`;}).join('')}
     </div>`;
   }
   let rangeBar = '';
@@ -406,6 +410,23 @@ function donutLegend(label, color, value, total) {
     <span style="font-weight:700;font-size:14px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</span>
     <span style="font-weight:800;flex-shrink:0">${eur0(value)}</span>
     <span class="muted" style="font-size:12px;font-weight:700;width:38px;text-align:right;flex-shrink:0">${pct}%</span></div>`;
+}
+function openMaintDetail(sub) {
+  const entries = entriesInPeriod(activeEntries(), reportPeriod);
+  const list = entries.filter((e)=>e.type==='maintenance' && (e.subtype||'Altro')===sub)
+    .sort((a,b)=>a.date<b.date?1:-1);
+  const total = list.reduce((a,e)=>a+(e.cost||0),0);
+  const rows = list.map((e)=>`
+    <div class="entry" data-act="edit-entry" data-id="${e.id}">
+      <div class="ic ic-maint">${icon('build')}</div>
+      <div class="body">
+        <div class="r1"><span class="ttl">${dFull(e.date)}</span><span class="cost">${eur(e.cost)}</span></div>
+        <div class="r2"><span class="m">${icon('speed')}${km(e.odometer)}</span>${e.note?`<span class="m">${e.note}</span>`:''}</div>
+      </div></div>`).join('');
+  openSheet(`
+    <h2 style="margin-bottom:2px">${sub}</h2>
+    <div class="muted" style="margin:0 4px 14px;font-weight:600;font-size:13px">${list.length} ${list.length===1?'intervento':'interventi'} · ${eur0(total)}</div>
+    <div class="tl">${rows || `<div class="empty">${icon('list')}<p>Nessun intervento</p></div>`}</div>`);
 }
 function drawReportCharts() {
   const entries = entriesInPeriod(activeEntries(), reportPeriod);
@@ -763,6 +784,7 @@ document.addEventListener('click', async (ev) => {
     if (ok) { await Store.deleteEntry(id); expandedId=null; snack('Movimento eliminato'); }
     return;
   }
+  if (act==='maint-detail') return openMaintDetail(actEl.dataset.sub);
   if (act==='range-this-month') { const n=new Date(); reportFrom=isoDate(new Date(n.getFullYear(),n.getMonth(),1)); reportTo=isoDate(new Date(n.getFullYear(),n.getMonth()+1,0)); render(); return; }
   if (act==='range-last-month') { const n=new Date(); reportFrom=isoDate(new Date(n.getFullYear(),n.getMonth()-1,1)); reportTo=isoDate(new Date(n.getFullYear(),n.getMonth(),0)); render(); return; }
   if (act==='export-json') return exportJSON();

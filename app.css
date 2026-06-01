@@ -213,6 +213,10 @@ button{font-family:inherit}
 .entry-actions{display:flex;gap:8px;justify-content:flex-end;padding:4px 6px 12px;
   margin-left:58px;border-bottom:1px solid var(--outline-variant)}
 .chip-sm{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:var(--surface-container-high);color:var(--on-surface-variant)}
+.maint-row{cursor:pointer;border-radius:12px;padding:8px;margin:0 -8px 4px;transition:background .15s}
+.maint-row:hover{background:var(--surface-container-low)}
+.maint-row:active{background:var(--surface-container-high)}
+.maint-row .chv{width:18px;height:18px;opacity:.45;flex-shrink:0}
 
 /* ---------- Chips / segmented ---------- */
 .seg{display:inline-flex;background:var(--surface-container);border-radius:100px;padding:4px;gap:4px;margin-bottom:14px}
