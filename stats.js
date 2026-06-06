@@ -57,13 +57,32 @@ export function consumptionSeries(fuelEntries) {
   return series; // ordinata per odometro crescente
 }
 
+// Consumo reale "vero" = distanza totale tra il primo e l'ultimo pieno divisa
+// per i litri erogati nell'intervallo (metodo totale-su-totale, lo stesso di
+// Drivvo "Media generale"). NON usa la serie filtrata: il rapporto distanza/litri
+// è robusto perché eventuali doppi pieni o parziali si compensano da soli
+// (la loro distanza e i loro litri rientrano comunque nel totale). I dati storici
+// con pieni mancanti sono stati ricostruiti, quindi qui non serve alcun filtro.
 export function lifetimeConsumption(fuelEntries) {
-  const s = consumptionSeries(fuelEntries);
-  if (!s.length) return { kml: 0, l100: 0, n: 0 };
-  const dist = s.reduce((a, x) => a + x.distance, 0);
-  const liters = s.reduce((a, x) => a + x.liters, 0);
-  const kml = liters > 0 ? dist / liters : 0;
-  return { kml: round(kml, 2), l100: round(kmlToL100(kml), 2), n: s.length, dist, liters: round(liters, 1) };
+  const fuel = [...fuelEntries].filter((e) => e.odometer > 0).sort(byOdoAsc);
+  let lastFullOdo = null, dist = 0, liters = 0, acc = 0, n = 0;
+  for (const f of fuel) {
+    if (lastFullOdo === null) {
+      if (f.fullTank) lastFullOdo = f.odometer; // primo pieno = inizio intervallo
+      continue;
+    }
+    acc += f.liters; // i litri di ogni rifornimento appartengono all'intervallo aperto
+    if (f.fullTank && f.odometer > lastFullOdo) {
+      dist += f.odometer - lastFullOdo;
+      liters += acc;
+      n++;
+      lastFullOdo = f.odometer;
+      acc = 0;
+    }
+  }
+  if (liters <= 0) return { kml: 0, l100: 0, n: 0, dist: 0, liters: 0 };
+  const kml = dist / liters;
+  return { kml: round(kml, 2), l100: round(kmlToL100(kml), 2), n, dist, liters: round(liters, 1) };
 }
 
 export function avgOfLast(series, n) {

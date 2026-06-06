@@ -360,7 +360,7 @@ function entryHTML(e) {
   return `<div class="entry" data-entry="${e.id}">
     <div class="ic ${fuel?'ic-fuel':'ic-maint'}">${icon(fuel?'fuel':'build')}</div>
     <div class="body">
-      <div class="r1"><span class="ttl">${entryTitle(e)}</span><span class="cost">${eur(e.cost)}</span></div>
+      <div class="r1"><span class="ttl">${entryTitle(e)}${e.reconstructed?`<span class="badge-recon" title="Rifornimento ricostruito per colmare lo storico iniziale">${icon('schedule')}Ricostruito</span>`:''}</span><span class="cost">${eur(e.cost)}</span></div>
       <div class="r2">${meta.join('')}<span class="date" style="margin-left:auto">${dShort(e.date)}</span></div>
     </div></div>
     ${expanded ? `<div class="entry-actions">
@@ -380,7 +380,7 @@ function entryStaticHTML(e) {
   return `<div class="entry" style="cursor:default">
     <div class="ic ${fuel?'ic-fuel':'ic-maint'}">${icon(fuel?'fuel':'build')}</div>
     <div class="body">
-      <div class="r1"><span class="ttl">${entryTitle(e)}</span><span class="cost">${eur(e.cost)}</span></div>
+      <div class="r1"><span class="ttl">${entryTitle(e)}${e.reconstructed?`<span class="badge-recon" title="Rifornimento ricostruito per colmare lo storico iniziale">${icon('schedule')}Ricostruito</span>`:''}</span><span class="cost">${eur(e.cost)}</span></div>
       <div class="r2">${meta.join('')}<span class="date" style="margin-left:auto">${dShort(e.date)}</span></div>
     </div></div>`;
 }

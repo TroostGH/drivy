@@ -2,7 +2,7 @@
 // Usa Firebase Firestore se configurato (config.js), altrimenti localStorage.
 // Espone un'API asincrona uniforme + sottoscrizione ai cambiamenti.
 
-import { buildSeed } from './seed.js';
+import { buildSeed, RECONSTRUCTED_ENTRIES } from './seed.js';
 
 const cfg = (window.DRIVY_CONFIG || {});
 const USE_FIREBASE = !!(cfg.projectId && cfg.apiKey);
@@ -67,6 +67,7 @@ const local = {
       localStorage.setItem(LS.seeded, '1');
       this.persist();
     }
+    migrateReconstructed.local();
     state.ready = true;
     emit();
   },
@@ -121,6 +122,8 @@ const remote = {
       await batch.commit();
     }
 
+    await migrateReconstructed.remote(db);
+
     // Listener realtime
     fb.onSnapshot(vCol, (snap) => {
       state.vehicles = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -145,6 +148,38 @@ const remote = {
   async addEntry(e) { await fb.setDoc(fb.doc(fb.db, 'entries', e.id), e); },
   async updateEntry(id, patch) { await fb.updateDoc(fb.doc(fb.db, 'entries', id), patch); },
   async deleteEntry(id) { await fb.deleteDoc(fb.doc(fb.db, 'entries', id)); },
+};
+
+// ======================================================
+//  Migrazione: pieni ricostruiti dello storico iniziale (idempotente)
+// ======================================================
+// Aggiunge i rifornimenti ricostruiti solo se non sono già presenti e solo se
+// il veicolo di riferimento esiste (così non crea record orfani). Gira a ogni
+// avvio ma agisce una volta sola, sia su Firebase sia in locale.
+const migrateReconstructed = {
+  async remote(db) {
+    try {
+      if (!RECONSTRUCTED_ENTRIES.length) return;
+      const first = RECONSTRUCTED_ENTRIES[0];
+      const probe = await fb.getDoc(fb.doc(db, 'entries', first.id));
+      if (probe.exists()) return; // già migrato
+      const veh = await fb.getDoc(fb.doc(db, 'vehicles', first.vehicleId));
+      if (!veh.exists()) return; // veicolo assente: non aggiungere orfani
+      let batch = fb.writeBatch(db);
+      for (const e of RECONSTRUCTED_ENTRIES) batch.set(fb.doc(db, 'entries', e.id), e);
+      await batch.commit();
+    } catch (err) { console.warn('Migrazione ricostruzione storico saltata:', err); }
+  },
+  local() {
+    if (!RECONSTRUCTED_ENTRIES.length) return;
+    const first = RECONSTRUCTED_ENTRIES[0];
+    const hasVehicle = state.vehicles.some((v) => v.id === first.vehicleId);
+    const already = state.entries.some((e) => e.reconstructed || e.id === first.id);
+    if (hasVehicle && !already) {
+      state.entries = [...RECONSTRUCTED_ENTRIES, ...state.entries];
+      local.persist();
+    }
+  },
 };
 
 // ======================================================

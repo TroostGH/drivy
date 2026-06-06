@@ -372,9 +372,27 @@ export const SEED_VEHICLE = {
   createdAt: '2019-03-22T15:01:33',
 };
 
+// ----------------------------------------------------------------------------
+// Rifornimenti RICOSTRUITI dello storico iniziale.
+// Quando ho iniziato a usare Drivvo (2019) alcuni pieni non furono registrati,
+// lasciando 3 "buchi" con consumi impossibili (es. 4.970 km con un solo pieno).
+// Questi 7 rifornimenti — tutti pieni, con litri/prezzi/date verosimili e consumi
+// ~20 km/L coerenti con il periodo — colmano quei buchi così che lo storico parta
+// davvero dalla consegna dell'auto (30 km) con dati sensati.
+// Sono marcati `reconstructed:true` per mostrarli col badge "Ricostruito".
+export const RECONSTRUCTED_ENTRIES = [
+  { id:'recon_mercedes-a180d_01', vehicleId:'mercedes-a180d', type:'fuel', date:'2019-04-03T22:55:21', odometer:858, cost:58.5, liters:41.818, pricePerLiter:1.399, fullTank:true, fuelType:'Diesel', station:'', note:'Ricostruzione storico', reconstructed:true },
+  { id:'recon_mercedes-a180d_02', vehicleId:'mercedes-a180d', type:'fuel', date:'2019-04-16T06:49:09', odometer:1686, cost:57.35, liters:40.99, pricePerLiter:1.399, fullTank:true, fuelType:'Diesel', station:'', note:'Ricostruzione storico', reconstructed:true },
+  { id:'recon_mercedes-a180d_03', vehicleId:'mercedes-a180d', type:'fuel', date:'2019-04-28T14:42:57', odometer:2514, cost:59.4, liters:42.462, pricePerLiter:1.399, fullTank:true, fuelType:'Diesel', station:'', note:'Ricostruzione storico', reconstructed:true },
+  { id:'recon_mercedes-a180d_04', vehicleId:'mercedes-a180d', type:'fuel', date:'2019-05-10T22:36:45', odometer:3342, cost:56.51, liters:40.39, pricePerLiter:1.399, fullTank:true, fuelType:'Diesel', station:'', note:'Ricostruzione storico', reconstructed:true },
+  { id:'recon_mercedes-a180d_05', vehicleId:'mercedes-a180d', type:'fuel', date:'2019-05-23T06:30:33', odometer:4170, cost:57.92, liters:41.4, pricePerLiter:1.399, fullTank:true, fuelType:'Diesel', station:'', note:'Ricostruzione storico', reconstructed:true },
+  { id:'recon_mercedes-a180d_06', vehicleId:'mercedes-a180d', type:'fuel', date:'2019-08-14T15:15:30', odometer:12150, cost:52.46, liters:37.5, pricePerLiter:1.399, fullTank:true, fuelType:'Diesel', station:'', note:'Ricostruzione storico', reconstructed:true },
+  { id:'recon_mercedes-a180d_07', vehicleId:'mercedes-a180d', type:'fuel', date:'2019-09-30T00:17:22', odometer:16060, cost:59.56, liters:42.574, pricePerLiter:1.399, fullTank:true, fuelType:'Diesel', station:'', note:'Ricostruzione storico', reconstructed:true },
+];
+
 export function buildSeed() {
   return {
     vehicle: SEED_VEHICLE,
-    entries: parseDrivvo(DRIVVO_CSV, SEED_VEHICLE.id),
+    entries: [...parseDrivvo(DRIVVO_CSV, SEED_VEHICLE.id), ...RECONSTRUCTED_ENTRIES],
   };
 }
