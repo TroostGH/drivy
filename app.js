@@ -352,7 +352,7 @@ function entryHTML(e) {
   meta.push(`<span class="m">${icon('speed')}${km(e.odometer)}</span>`);
   if (fuel) {
     if (e.liters) meta.push(`<span class="m">${icon('drop')}${numf(e.liters,2)} L</span>`);
-    if (e.station) meta.push(`<span class="m">${icon('place')}${e.station}</span>`);
+    if (e.pricePerLiter) meta.push(`<span class="m">${icon('euro')}${numf(e.pricePerLiter,3)}/L</span>`);
   } else if (e.note) {
     meta.push(`<span class="m">${e.note}</span>`);
   }
@@ -373,7 +373,7 @@ function entryStaticHTML(e) {
   const meta = [`<span class="m">${icon('speed')}${km(e.odometer)}</span>`];
   if (fuel) {
     if (e.liters) meta.push(`<span class="m">${icon('drop')}${numf(e.liters,2)} L</span>`);
-    if (e.station) meta.push(`<span class="m">${icon('place')}${e.station}</span>`);
+    if (e.pricePerLiter) meta.push(`<span class="m">${icon('euro')}${numf(e.pricePerLiter,3)}/L</span>`);
   } else if (e.note) {
     meta.push(`<span class="m">${e.note}</span>`);
   }
